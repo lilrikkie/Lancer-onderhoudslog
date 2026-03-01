@@ -6,14 +6,14 @@ from datetime import datetime
 
 app = Flask(__name__)
 
-# Database configuratie: Slaat op in de map waar dit script staat
+# Database configuratie
 basedir = os.path.abspath(os.path.dirname(__file__))
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'onderhoud.db')
+# Gebruikt een omgevingsvariabele op de server, of lokaal de onderhoud.db
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///' + os.path.join(basedir, 'onderhoud.db'))
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
 
-# Database Model
 class Onderhoud(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     datum = db.Column(db.DateTime, default=datetime.utcnow)
@@ -25,7 +25,6 @@ class Onderhoud(db.Model):
     koelvloeistof = db.Column(db.Boolean)
     remvloeistof = db.Column(db.Boolean)
 
-# Maak de database aan
 with app.app_context():
     db.create_all()
 
@@ -78,12 +77,12 @@ def export_excel():
         lijst.append({
             'Datum': item.datum.strftime('%d-%m-%Y'),
             'Kilometerstand': item.km_stand,
-            'Olie gewisseld': 'Ja' if item.olie else 'Nee',
+            'Olie': 'Ja' if item.olie else 'Nee',
             'Oliefilter': 'Ja' if item.oliefilter else 'Nee',
             'Luchtfilter': 'Ja' if item.luchtfilter else 'Nee',
             'Interieurfilter': 'Ja' if item.interieurfilter else 'Nee',
-            'Koelvloeistof OK': 'Ja' if item.koelvloeistof else 'Nee',
-            'Remvloeistof OK': 'Ja' if item.remvloeistof else 'Nee'
+            'Koelvloeistof': 'Ja' if item.koelvloeistof else 'Nee',
+            'Remvloeistof': 'Ja' if item.remvloeistof else 'Nee'
         })
     df = pd.DataFrame(lijst)
     excel_pad = os.path.join(basedir, 'Mitsubishi_Lancer_Onderhoud.xlsx')
@@ -91,4 +90,6 @@ def export_excel():
     return send_file(excel_pad, as_attachment=True)
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    # host='0.0.0.0' maakt de site bereikbaar via WiFi op je telefoon
+    # port=int(os.environ.get("PORT", 5000)) is nodig voor GitHub/Render
+    app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 5000)), debug=True)
